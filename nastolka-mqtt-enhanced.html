@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Настолка — вечеринка</title>
+<style>
+:root{--bg:#f5f0e7;--card:#fffdf8;--ink:#29231d;--mut:#7b7063;--acc:#dc5637;--acc2:#287b61;--line:#e5dac9;--soft:#f0e7d9;color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#191713;--card:#27221c;--ink:#f5eddf;--mut:#b4a895;--acc:#ff8060;--acc2:#60c49d;--line:#443a2e;--soft:#342c23;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#191713;--card:#27221c;--ink:#f5eddf;--mut:#b4a895;--acc:#ff8060;--acc2:#60c49d;--line:#443a2e;--soft:#342c23;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:650px;margin:0 auto;padding:22px 16px 42px}h1{font-size:29px;letter-spacing:-.7px;margin:8px 0 2px}.sub{color:var(--mut);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 5px 20px #00000008}
+input{width:100%;padding:13px;border-radius:11px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:16px;margin:6px 0}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 16px;background:var(--acc);color:#fff;font-weight:700;margin:4px 5px 4px 0;transition:transform .12s,opacity .12s}
+button:active{transform:scale(.98)}button.alt{background:var(--acc2)}button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}button:disabled{opacity:.4;cursor:default}
+.code{font-size:36px;letter-spacing:7px;font-weight:850;color:var(--acc)}.tag{display:inline-block;font-size:12px;padding:5px 10px;border-radius:99px;background:var(--soft);color:var(--mut);font-weight:700}
+.task{font-size:23px;font-weight:800;line-height:1.25;margin:13px 0}.row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line)}.row:last-child{border:0}
+.mut{color:var(--mut);font-size:14px}.stars button{width:48px;padding:11px 0}.roundhead{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.drawwrap{margin:14px 0 8px;background:#fff;border:1px solid #d9d9d9;border-radius:14px;overflow:hidden}
+#draw{display:block;width:100%;height:auto;aspect-ratio:16/10;touch-action:none;cursor:crosshair;background:#fff}
+.drawtools{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:8px}.drawtools button{margin:0;padding:9px 12px}
+.colorpick{width:38px;height:38px;padding:2px;margin:0;border:1px solid var(--line);background:var(--card);border-radius:9px}
+.shared-drawing{display:block;width:100%;border-radius:12px;background:#fff;border:1px solid #ddd;margin-top:12px}
+.musicbox{background:linear-gradient(135deg,#30204e,#633b78);color:#fff;border-radius:14px;padding:16px;margin:12px 0}.musicbox .mut{color:#e5d7ef}
+.scoretitle{display:flex;justify-content:space-between;align-items:center}
+@media(max-width:420px){main{padding:15px 12px 32px}.task{font-size:21px}.card{padding:14px}}
+</style>
+</head>
+<body>
+<main id="app"></main><p class="mut" id="nb" style="text-align:center"></p>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+var CARDS=[
+["🎨","Нарисуйте «свидание на Луне» за 30 секунд — остальные угадывают, что это.","draw"],
+["🎵","Напойте припев известной песни без слов. Остальные должны угадать песню.","music"],
+["🎭","Изобразите без слов любимую рекламу 2000-х.","mime"],
+["🧠","Назовите 5 городов на букву «К» за 10 секунд.","quiz"],
+["🤥","Расскажите 2 правды и 1 ложь о себе — зал угадывает ложь.","talk"],
+["🎨","Нарисуйте кота с закрытыми глазами.","draw"],
+["🎵","Спойте любую песню голосом оперного певца. Команда угадывает оригинал.","music"],
+["🎭","Покажите, как бы выглядел ваш первый рабочий день на Марсе.","mime"],
+["🧠","Придумайте название для ужасной настолки про налоги.","quiz"],
+["🎭","Изобразите робота, который впервые пробует лимон.","mime"],
+["🎵","Напойте мелодию песни, используя только слог «ла».","music"],
+["🎨","Нарисуйте автопортрет другой рукой.","draw"],
+["🎭","Покажите известного персонажа так, чтобы его узнали за 20 секунд.","mime"],
+["🎵","Продолжите строчку песни, которую начнут остальные.","music"],
+["🎨","Нарисуйте слона на велосипеде за 40 секунд.","draw"],
+["🎭","Изобразите пантомимой «опоздал на поезд, но делаешь вид, что так и задумано».","mime"],
+["🎵","Изобразите ритм известной песни хлопками. Остальные угадывают.","music"],
+["🧠","Придумайте 3 слогана для зубной щётки за 15 секунд.","quiz"],
+["🎨","Нарисуйте смешное животное, собранное из трёх разных животных.","draw"],
+["🎭","Покажите без слов поход в магазин, где всё внезапно стало невидимым.","mime"],
+["🎵","Спойте детскую песню в стиле тяжёлого рока (без инструментов).","music"],
+["🤥","Убедите всех, что вы умеете разговаривать с птицами.","talk"],
+["🎨","Нарисуйте предмет, который остальные должны угадать, не отрывая маркер от бумаги.","draw"],
+["🎭","Изобразите человека, который пытается незаметно съесть огромный торт.","mime"],
+["🎵","Напойте заставку мультфильма или сериала. Остальные угадывают.","music"],
+["🧠","За 15 секунд назовите 7 вещей, которые можно найти на кухне.","quiz"],
+["🎨","Нарисуйте карту сокровищ с одним очень странным препятствием.","draw"],
+["🎭","Покажите пантомимой профессию, не используя очевидные предметы.","mime"],
+["🎵","Спойте одну строчку песни так, будто вы очень злитесь.","music"],
+["🎨","Нарисуйте дом мечты за 30 секунд, но ваша рука должна всё время оставаться на весу.","draw"],
+["🎭","Изобразите сцену: вы — шпион, которого раскрыла говорящая собака.","mime"],
+["🎵","Простучите ритм популярной песни по столу. Не используйте слова.","music"],
+["🧠","Назовите 5 фильмов, в названии которых есть имя.","quiz"],
+["🎨","Нарисуйте портрет игрока слева, не глядя на лист.","draw"],
+["🎭","Изобразите походку трёх животных подряд — остальные называют их.","mime"],
+["🎵","Напойте песню задом наперёд по слогам или попробуйте воспроизвести её ритм.","music"],
+["🎨","Нарисуйте пиццу с самой нелепой начинкой.","draw"],
+["🎭","Покажите без слов, что вы выиграли миллион, но не можете никому рассказать.","mime"],
+["🎵","Спойте известную песню шёпотом, сохраняя мелодию.","music"],
+["🧠","Придумайте новое применение обычной ложке за 20 секунд.","quiz"]
+];
+var app=document.getElementById("app");
+var myPeer=null,myName="",code="",isHost=false,S=null,err="",status="";
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function rnd(a){return a[Math.floor(Math.random()*a.length)]}
+function mkCode(){var l="ABCDEFGHJKLMNPQRSTUVWXYZ",s="";for(var i=0;i<4;i++)s+=l[Math.floor(Math.random()*l.length)];return s}
+function bcast(){if(isHost&&sendMsg)sendMsg({t:"state",d:S})}
+function typeName(t){return ({draw:"Рисовальный раунд",music:"Музыкальный раунд",mime:"Пантомима",quiz:"Блиц-задание",talk:"Общение"})[t]||"Раунд"}
+function render(){
+ if(!S){app.innerHTML='<h1>🎲 Настолка</h1><p class="sub">Вечеринка для компании: рисунки, музыка, пантомима и неожиданные задания. Каждый играет со своего телефона.</p><div class="card"><input id="nm" maxlength="16" placeholder="Ваше имя" value="'+esc(myName)+'"><button data-a="create">Создать комнату</button></div><div class="card"><input id="cd" maxlength="4" placeholder="Код комнаты" style="text-transform:uppercase"><button class="alt" data-a="join">Войти по коду</button></div>'+(status?'<p class="mut">'+esc(status)+'</p>':'')+(err?'<p style="color:var(--acc)">'+esc(err)+'</p>':'');return}
+ var ids=Object.keys(S.players),h='<h1>🎲 Настолка</h1><span class="tag">Комната '+esc(code)+'</span> ',pf=S.order[S.turn],pn=pf&&S.players[pf]?S.players[pf].name:"",isP=pf===myPeer;
+ if(S.phase==="lobby"){
+  h+='<div class="card"><div class="mut">Код для друзей — отправьте его участникам</div><div class="code">'+esc(code)+'</div></div><div class="card"><b>Игроки ('+ids.length+')</b>';
+  ids.forEach(function(i){h+='<div class="row"><span>'+esc(S.players[i].name)+(i===S.host?" 👑":"")+'</span><b>'+S.players[i].score+'</b></div>'});h+='</div>';
+  h+=isHost?'<button data-a="start"'+(ids.length<2?' disabled':'')+'>Начать игру</button><p class="mut">Минимум 2 игрока. В игре будут чередоваться разные типы раундов.</p>':'<p class="mut">Ждём, пока хозяин начнёт игру…</p>';
+ }else if(S.phase==="end"){
+  h+='<div class="card"><b>🏆 Итоги игры</b>';ids.sort(function(a,b){return S.players[b].score-S.players[a].score}).forEach(function(i,k){h+='<div class="row"><span>'+(k+1)+'. '+esc(S.players[i].name)+'</span><b>'+S.players[i].score+' ⭐</b></div>'});h+='</div>'+(isHost?'<button data-a="again">Новая игра</button>':'');
+ }else{
+  var card=S.card||["🎲","Задание","quiz"],kind=card[2]||"quiz";
+  h+='<div class="roundhead"><span class="tag">Раунд '+(S.turn+1)+' из '+S.order.length+'</span><span class="tag">'+esc(typeName(kind))+'</span></div>';
+  h+='<div class="card"><div class="mut">Сейчас выступает: <b>'+esc(pn)+(isP?" (вы)":"")+'</b></div><div class="task">'+card[0]+' '+esc(card[1])+'</div>';
+  if(kind==="draw"){
+   if(isP&&S.phase==="perform"){
+    h+='<p class="mut">Рисуйте пальцем на телефоне или мышью. После завершения рисунок появится у всех.</p><div class="drawwrap"><canvas id="draw" width="900" height="560"></canvas></div><div class="drawtools"><input class="colorpick" type="color" id="ink" value="#242424" aria-label="Цвет"><button class="ghost" data-a="undo">Отменить штрих</button><button class="ghost" data-a="clear">Очистить</button></div>';
+   }else if(S.drawingData){h+='<img class="shared-drawing" src="'+S.drawingData+'" alt="Рисунок игрока">';}
+   else h+='<p class="mut">Художник готовит шедевр…</p>';
+  }else if(kind==="music"){
+   h+='<div class="musicbox"><div style="font-size:26px">🎶 🎤 🎧</div><b>Сцена — ваша!</b><p class="mut">Можно напевать, петь, отбивать ритм или продолжать строчку. Остальные угадывают. Музыка исполняется игроком — включать отдельный плеер не нужно.</p></div>';
+  }else if(kind==="mime"){
+   h+='<div class="musicbox" style="background:linear-gradient(135deg,#1e6658,#328e76)"><div style="font-size:26px">🤫 🎭</div><b>Ни слова и никаких подсказок голосом!</b><p class="mut">Используйте жесты, мимику и движения. Остальные угадывают.</p></div>';
+  }
+  if(S.phase==="perform")h+=isP?'<button data-a="done">Задание выполнено!</button>':'<p class="mut">Смотрим и угадываем…</p>';
+  else if(S.phase==="vote"){
+   if(isP)h+='<p class="mut">Зал выставляет оценки…</p>';
+   else if(S.votes[myPeer]!=null)h+='<p class="mut">Ваша оценка: '+S.votes[myPeer]+' ⭐ Ждём остальных…</p>';
+   else{h+='<p>Оцените выступление:</p><div class="stars">';for(var s=1;s<=5;s++)h+='<button class="alt" data-a="vote" data-s="'+s+'">'+s+'</button>';h+='</div>'}
+  }else h+='<p><b>Итог раунда: +'+S.gain+' очков</b> для '+esc(pn)+'</p>'+(isHost?'<button data-a="next">Следующий раунд</button>':'<p class="mut">Ждём хозяина…</p>');
+  h+='</div><div class="card"><div class="scoretitle"><b>🏆 Счёт</b><span class="mut">1–5 очков за раунд</span></div>';
+  ids.sort(function(a,b){return S.players[b].score-S.players[a].score}).forEach(function(i){h+='<div class="row"><span>'+esc(S.players[i].name)+'</span><b>'+S.players[i].score+' ⭐</b></div>'});h+='</div>';
+ }
+ app.innerHTML=h;
+ if(S.phase==="perform"&&isP&&S.card&&S.card[2]==="draw")initCanvas();
+}
+function initCanvas(){
+ var c=document.getElementById("draw");if(!c)return;var ctx=c.getContext("2d"),drawing=false,strokes=S.localStrokes||[];
+ function paint(){ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);strokes.forEach(function(st){if(st.length<2)return;ctx.beginPath();ctx.strokeStyle=st[0].color;ctx.lineWidth=st[0].w;ctx.lineCap="round";ctx.lineJoin="round";ctx.moveTo(st[0].x,st[0].y);for(var i=1;i<st.length;i++)ctx.lineTo(st[i].x,st[i].y);ctx.stroke()})}
+ function pos(e){var r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height}}
+ c.addEventListener("pointerdown",function(e){drawing=true;c.setPointerCapture(e.pointerId);var p=pos(e),color=document.getElementById("ink").value;strokes.push([{x:p.x,y:p.y,color:color,w:8}]);paint()});
+ c.addEventListener("pointermove",function(e){if(!drawing)return;var p=pos(e),st=strokes[strokes.length-1];st.push({x:p.x,y:p.y,color:st[0].color,w:st[0].w});paint()});
+ function finish(){if(!drawing)return;drawing=false;S.localStrokes=strokes;S.drawingData=c.toDataURL("image/jpeg",.72);act("drawing",{data:S.drawingData})}
+ c.addEventListener("pointerup",finish);c.addEventListener("pointercancel",finish);paint();
+}
+function newCard(){S.card=rnd(CARDS);S.votes={};S.gain=0;S.drawingData="";S.localStrokes=[];S.phase="perform"}
+function startGame(){var ids=Object.keys(S.players);ids.forEach(function(i){S.players[i].score=0});var o=ids.slice().sort(function(){return Math.random()-.5});S.order=o.concat(o.slice().sort(function(){return Math.random()-.5}));S.turn=0;newCard()}
+function checkVotes(){var pf=S.order[S.turn],need=Object.keys(S.players).filter(function(i){return i!==pf});if(need.every(function(i){return S.votes[i]!=null})){var t=0;need.forEach(function(i){t+=S.votes[i]});S.gain=t;if(S.players[pf])S.players[pf].score+=t;S.phase="result"}}
+var sendMsg=null,clients=[],seen={},topic="";
+function rid(){return Math.random().toString(36).slice(2,10)}
+function nbUpd(){var el=document.getElementById("nb");if(el){var n=clients.filter(function(c){return c.connected}).length;el.textContent="Подключения: "+n+" из "+clients.length}}
+function act(t,d){if(isHost)handle(myPeer,t,d);else if(sendMsg&&S&&S.host)sendMsg({t:t,d:d},S.host)}
+function handle(p,t,d){
+ if(t==="hello"){if(S.phase==="lobby"&&d&&d.n&&!S.players[p])S.players[p]={name:String(d.n).slice(0,16),score:0}}
+ else if(t==="done"){if(S.phase==="perform"&&p===S.order[S.turn])S.phase="vote"}
+ else if(t==="drawing"){if(S.phase==="perform"&&p===S.order[S.turn]&&d&&typeof d.data==="string"&&d.data.length<1800000)S.drawingData=d.data}
+ else if(t==="clearDrawing"){if(S.phase==="perform"&&p===S.order[S.turn])S.drawingData=""}
+ else if(t==="vote"){var v=Number(d&&d.s);if(S.phase==="vote"&&p!==S.order[S.turn]&&S.players[p]&&v>=1&&v<=5&&S.votes[p]==null){S.votes[p]=v;checkVotes()}}
+ bcast();render();
+}
+function onMsg(m){if(isHost){if(m.t!=="state")handle(m.from,m.t,m.d)}else if(m.t==="state"&&m.d&&m.d.code===code&&m.from===m.d.host){var keep=S&&S.localStrokes;var drawingNow=S&&S.phase==="perform"&&S.order[S.turn]===myPeer&&S.card&&S.card[2]==="draw";S=m.d;if(drawingNow&&S.phase==="perform"&&S.order[S.turn]===myPeer&&S.card&&S.card[2]==="draw"){S.localStrokes=keep||[];return}render()}}
+function noServers(){return !clients.some(function(c){return c.connected})}
+function enter(host){
+ err="";isHost=host;if(!window.mqtt){err="Не загрузилась библиотека MQTT. Проверьте интернет.";S=null;status="";render();return}
+ myPeer=rid()+rid();topic="nastolka-ru/"+code.toLowerCase()+"/m";
+ sendMsg=function(m,to){m.id=rid();m.from=myPeer;if(to)m.to=to;var p=JSON.stringify(m);clients.forEach(function(c){if(c.connected)c.publish(topic,p)})};
+ ["wss://broker.emqx.io:8084/mqtt","wss://broker.hivemq.com:8884/mqtt","wss://test.mosquitto.org:8081"].forEach(function(u){var c=mqtt.connect(u,{clientId:"n"+rid()+rid(),reconnectPeriod:3000,connectTimeout:8000});c.on("connect",function(){c.subscribe(topic);nbUpd();if(isHost)bcast()});c.on("close",nbUpd);c.on("error",function(){});c.on("message",function(t,pl){var m;try{m=JSON.parse(pl.toString())}catch(e){return}if(!m||!m.id||seen[m.id]||m.from===myPeer||(m.to&&m.to!==myPeer))return;seen[m.id]=1;onMsg(m)});clients.push(c)});
+ nbUpd();if(host){S.host=myPeer;S.players[myPeer]={name:myName,score:0};render();setTimeout(function(){if(noServers()){err="Не удалось подключиться к серверам (возможна блокировка, попробуйте VPN).";S=null;status="";render()}},15000)}
+ else{var n=0,hi=setInterval(function(){if(S&&S.players[myPeer]){clearInterval(hi);return}if(++n>15){clearInterval(hi);err=noServers()?"Не удалось подключиться к серверам (возможна блокировка, попробуйте VPN).":"Комната не найдена. Проверьте код и что хозяин не закрыл вкладку.";S=null;status="";render();return}sendMsg({t:"hello",d:{n:myName}})},2000)}
+}
+app.addEventListener("click",function(e){
+ var b=e.target.closest("button");if(!b)return;var a=b.getAttribute("data-a");
+ if(a==="create"||a==="join"){var n=document.getElementById("nm").value.trim();if(!n){err="Введите имя.";render();return}myName=n;
+  if(a==="create"){code=mkCode();S={code:code,phase:"lobby",players:{},order:[],turn:0,votes:{},card:["","",""],gain:0,host:null,drawingData:""};status="Создаём комнату…";render();enter(true)}
+  else{var c=document.getElementById("cd").value.trim().toUpperCase();if(c.length!==4){err="Код состоит из 4 букв.";render();return}code=c;status="Подключаемся…";render();enter(false)}return}
+ if(a==="start"){startGame();bcast();render()}
+ else if(a==="again"){S.phase="lobby";S.order=[];S.turn=0;bcast();render()}
+ else if(a==="done"){act("done",{})}
+ else if(a==="vote"){act("vote",{s:Number(b.getAttribute("data-s"))})}
+ else if(a==="next"){S.turn++;if(S.turn>=S.order.length)S.phase="end";else newCard();bcast();render()}
+ else if(a==="clear"){var c=document.getElementById("draw");if(c){c.getContext("2d").clearRect(0,0,c.width,c.height);S.localStrokes=[];S.drawingData="";act("clearDrawing",{});initCanvas()}}
+ else if(a==="undo"){var c=document.getElementById("draw");if(c){S.localStrokes=(S.localStrokes||[]).slice(0,-1);initCanvas()}}
+});
+render();
+</script>
+</body></html>
